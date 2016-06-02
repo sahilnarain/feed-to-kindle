@@ -82,7 +82,7 @@ async.waterfall([
 
   function (content, doneCallback) {
     var bookData = {
-      title: 'Blog rip',
+      title: file,
       author: content[0].author,
       publisher: 'Sahil Narain',
       content: []
