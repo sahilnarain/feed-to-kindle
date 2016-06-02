@@ -1,0 +1,23 @@
+{
+  "name": "kindle-cs",
+  "version": "1.0.0",
+  "description": "kindle code-simplicity",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "kindle",
+    "code-simplicity",
+    "archive"
+  ],
+  "author": "Sahil",
+  "license": "ISC",
+  "dependencies": {
+    "async": "^2.0.0-rc.5",
+    "epub-gen": "0.0.13",
+    "feed-read": "0.0.1",
+    "request": "^2.72.0",
+    "yargs": "^4.7.1"
+  }
+}
