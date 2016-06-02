@@ -1,3 +1,5 @@
+#!/usr/bin/node
+
 var async = require('async');
 var request = require('request');
 var feed = require('feed-read');
