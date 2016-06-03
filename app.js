@@ -69,6 +69,7 @@ async.waterfall([
           }
 
           body = JSON.parse(body);
+          console.log('Downloading - ' + body.title);
           content.push(body);
           return cb(null);
         });
