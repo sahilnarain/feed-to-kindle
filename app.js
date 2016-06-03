@@ -60,7 +60,7 @@ async.waterfall([
       setTimeout(function () {
         var options = {
           method: 'GET',
-          url: process.env.PARSER_ARTICLE + '?api_key=' + process.env.PARSER_KEY + '&url=' + links
+          url: process.env.PARSER_ARTICLE + '?api_key=' + process.env.PARSER_KEY + '&url=' + link
         };
 
         request(options, function (err, response, body) {
@@ -110,6 +110,7 @@ async.waterfall([
 ], function (err) {
   if (err) {
     console.log('Error');
+    console.log(err);
     process.exit(0);
   }
 
