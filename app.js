@@ -15,6 +15,8 @@ var url = args.url;
 
 if (args.cutoff) {
   var cutoff = new Date(args.cutoff);
+} else {
+  var cutoff = new Date('1970-01-01');
 }
 
 if (args.file) {
@@ -40,20 +42,18 @@ async.waterfall([
 
   function (rss, doneCallback) {
     for (i = 0; i < rss.length; i++) {
-      if (args.cutoff) {
-        if (rss[i].published > cutoff) {
-          links.push(rss[i].link);
-        }
-      } else {
+      if (rss[i].published > cutoff) {
         links.push(rss[i].link);
       }
     }
+
     return doneCallback(null, links);
   },
 
   function (links, doneCallback) {
     if (links.length === 0) {
       console.log('No content');
+      process.exit(1);
     }
 
     async.eachSeries(links, function (link, cb) {
