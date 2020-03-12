@@ -1,119 +1,187 @@
-#!/usr/local/bin/node
+const async = require('async');
+const epub = require('epub-gen');
+const feed = require('feed-read');
+const fs = require('fs');
+const kindlegen = require('kindlegen');
+const nodemailer = require('nodemailer');
 
-var async = require('async');
-var request = require('request');
-var feed = require('feed-read');
-var epub = require('epub-gen');
-var args = require('yargs').argv;
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: '',
+    pass: ''
+  }
+});
 
-if (!args.url) {
-  console.log('Usage: --url <feedUrl> [optional] --cutoff <yyyy-mm-dd> --file <filename>');
-  process.exit(1);
+const mailOptions = {
+  from: '',
+  to: '',
+  subject: 'convert',
+  text: ' ',
+  attachments: []
+};
+
+/*
+let feedPrototype = {
+title: 'Times of India',
+url: 'https://timesofindia.indiatimes.com/rssfeedstopstories.cms',
+lapsedMinutes: 30
+limit: 5,
+cover: 'https://lawprofessors.typepad.com/.a/6a00d8341bfae553ef01b8d1594773970c-800wi',
 }
+*/
 
-var url = args.url;
+let feeds = [];
 
-if (args.cutoff) {
-  var cutoff = new Date(args.cutoff);
-} else {
-  var cutoff = new Date('1970-01-01');
-}
+async.each(feeds, (_feed, cb) => {
+  console.log(`Starting ${_feed.title}`);
 
-if (args.file) {
-  var file = args.file;
-} else {
-  var file = 'content';
-}
+  let options = {
+    title: `${_feed.title} - ${new Date().toISOString().substring(0,10)} ${new Date().toISOString().substring(11,13)}h${new Date().toISOString().substring(14,16)}m`,
+    author: 'Sahil Narain',
+    publisher: 'Sahil Narain',
+    content: []
+  };
 
-var links = [],
-  content = [];
+  _feed.cover ? options.cover = _feed.cover : null;
 
-async.waterfall([
-  function (doneCallback) {
-    feed(url, function (err, result) {
+  async.waterfall([
+    (doneCallback) => {
+      feed(_feed.url, (err, rssFeed) => {
+        if (err) {
+          return doneCallback(err);
+        }
 
-      if (err) {
-        return doneCallback(err);
-      }
+        if (!rssFeed || !rssFeed.length) {
+          return doneCallback('Error: Feed not found');
+        }
 
-      return doneCallback(null, result);
-    });
-  },
+        if (_feed.limit) {
+          rssFeed = rssFeed.slice(0, _feed.limit);
+        }
 
-  function (rss, doneCallback) {
-    for (i = 0; i < rss.length; i++) {
-      if (rss[i].published > cutoff) {
-        links.push(rss[i].link);
-      }
-    }
+        console.log(`${_feed.title} - Fetched RSS content.`);
+        return doneCallback(null, rssFeed);
+      });
+    },
 
-    return doneCallback(null, links);
-  },
+    (rssFeed, doneCallback) => {
+      rssFeed.map(rss => {
+        rss.title = rss.title.replace(/<.*>/g, '');
 
-  function (links, doneCallback) {
-    if (links.length === 0) {
-      console.log('No content');
-      process.exit(1);
-    }
+        if (_feed.hasOwnProperty('lapsedMinutes')) {
+          try {
+            let publishedDate = new Date(rss.published).toISOString();
 
-    async.eachSeries(links, function (link, cb) {
-      setTimeout(function () {
-        var options = {
-          method: 'GET',
-          url: process.env.PARSER_ARTICLE + '?api_key=' + process.env.PARSER_KEY + '&url=' + link
-        };
+            if (new Date(rss.published) > new Date(new Date() - _feed.lapsedMinutes * 60 * 1000)) {
+              let _content = {
+                title: rss.title,
+                data: rss.content
+              };
 
-        request(options, function (err, response, body) {
-          if (err) {
-            return cb(err);
+              options.content.push(_content);
+            }
+          } catch (e) {
+            let _content = {
+              title: rss.title,
+              data: rss.content
+            };
+
+            options.content.push(_content);
           }
+        } else {
+          let _content = {
+            title: rss.title,
+            data: rss.content
+          };
 
-          body = JSON.parse(body);
-          console.log('Downloading - ' + body.title);
-          content.push(body);
-          return cb(null);
+          options.content.push(_content);
+        }
+
+        if (new Date(rss.published) > new Date(new Date() - _feed.lapsedMinutes * 60 * 1000)) {
+          let _content = {
+            title: rss.title,
+            data: rss.content
+          };
+
+          options.content.push(_content);
+        }
+      });
+
+      return doneCallback(null);
+    },
+
+    (doneCallback) => {
+      let _fileName = __dirname + '/' + options.title;
+
+      if (options.content.length) {
+        new epub(options, `${_fileName}.epub`).promise.then(() => {
+          console.log(`${_feed.title} - Generated epub.`)
+          console.log(`${_feed.title} - Converting to mobi.`)
+          kindlegen(fs.readFileSync(`${_fileName}.epub`), (error, mobi) => {
+            fs.writeFileSync(`${_fileName}.mobi`, mobi);
+            fs.unlinkSync(`${_fileName}.epub`);
+            console.log(`${_feed.title} - Generated mobi.`)
+
+            return doneCallback(null, _fileName);
+          });
+        }, (err) => {
+          console.log(`${_feed.title} - Something went wrong.`);
+          return doneCallback(null, _fileName);
         });
-      }, 1000);
-    }, function (err) {
-      if (err) {
-        return doneCallback(err);
+      } else {
+        console.log(`${_feed.title} - Nothing to do.`);
+        return doneCallback(null, null);
+      }
+    },
+
+    (fileName, doneCallback) => {
+      if (!fileName) {
+        return doneCallback(null, false);
       }
 
-      return doneCallback(null, content);
-    });
-  },
-
-  function (content, doneCallback) {
-    var bookData = {
-      title: file,
-      author: content[0].author,
-      publisher: 'Sahil Narain',
-      content: []
-    };
-
-    content.forEach(function (con) {
-      var chapter = {
-        title: con.title,
-        author: con.author,
-        data: con.html
+      let _attachment = {
+        filename: `${options.title}.mobi`,
+        content: fs.readFileSync(fileName + '.mobi')
       };
 
-      bookData.content.push(chapter);
-    });
+      mailOptions.attachments.push(_attachment);
 
-    return doneCallback(null, bookData);
-  },
+      console.log(`${_feed.title} - Sending email.`);
+      transporter.sendMail(mailOptions, (err, result) => {
+        if (err) {
+          return doneCallback(err);
+        }
 
-  function (bookData, doneCallback) {
-    new epub(bookData, __dirname + '/' + file + '.epub');
-    return doneCallback(null);
-  }
-], function (err) {
+        console.log(`${_feed.title} - Email sent.`)
+        return doneCallback(null, fileName);
+      });
+    },
+
+    (fileName, doneCallback) => {
+      if (!options.content.length) {
+        return doneCallback(null, true);
+      }
+
+      console.log(`${_feed.title} - Cleaning up files.`);
+      fs.unlinkSync(`${fileName}.mobi`);
+
+      console.log(`${_feed.title} - Completed.`)
+      return doneCallback(null, true);
+    }
+  ], (err, result) => {
+    if (err) {
+      console.log(`${_feed.title} - Error: ${err}`);
+    }
+
+    return cb(null);
+  });
+}, (err, result) => {
   if (err) {
-    console.log('Error');
     console.log(err);
-    process.exit(0);
+    process.exit();
   }
 
   console.log('Done');
+  process.exit();
 });

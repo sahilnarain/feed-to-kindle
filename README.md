@@ -1,8 +1,16 @@
 # feed-to-kindle
-Pick any site's feed and compile it as an Epub for e-readers!
+Pick any site's feed and compile it as an ebook for Kindle!
 
-#Pre-requisites
-Set the following environment variables - i) PARSER_ARTICLE - Instaparser Article API URL and ii) PARSER_KEY - Instaparser API Key
-  
 #Usage
-node app.js --url <feedUrl> [optional] --cutoff <yyyy-mm-dd> --file <filename>
+- Configure email options
+- Add a feed to the list
+
+```
+let feed = {
+  title: // Title
+  url: // Feed URL
+  lapsedMinutes: // Pull articles published since last check
+  limit: // Limit the number of articles
+  cover: // Optional, cover image
+};
+```
