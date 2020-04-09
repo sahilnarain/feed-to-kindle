@@ -145,10 +145,11 @@ async.each(feeds, (_feed, cb) => {
         content: fs.readFileSync(fileName + '.mobi')
       };
 
-      mailOptions.attachments.push(_attachment);
+      let _mailOptions = JSON.parse(JSON.stringify(mailOptions));
+      _mailOptions.attachments.push(_attachment);
 
       console.log(`${_feed.title} - Sending email.`);
-      transporter.sendMail(mailOptions, (err, result) => {
+      transporter.sendMail(_mailOptions, (err, result) => {
         if (err) {
           return doneCallback(err);
         }
