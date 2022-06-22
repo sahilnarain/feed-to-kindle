@@ -21,7 +21,7 @@
   },
   "homepage": "https://github.com/sahilnarain/kindle-waitbutwhy#readme",
   "dependencies": {
-    "async": "^3.2.0",
+    "async": "^3.2.2",
     "epub-gen": "^0.1.0",
     "feed-read": "0.0.1",
     "kindlegen": "^1.1.0",
